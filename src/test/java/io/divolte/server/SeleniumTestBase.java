@@ -166,6 +166,8 @@ public abstract class SeleniumTestBase {
     @Parameter(1)
     public String capabilityDescription;
     @Parameter(2)
+    public boolean queue;
+    @Parameter(3)
     public boolean quirksMode;
 
     private enum TestResult {
@@ -176,30 +178,36 @@ public abstract class SeleniumTestBase {
 
     private Optional<Consumer<TestResult>> testResultHook = Optional.empty();
 
-    @Parameters(name = "Selenium JS test: {1} (quirks-mode={2})")
-    public static Iterable<Object[]> sauceLabBrowsersToTest() {
+    protected static Collection<Object[]> getBrowserList() {
         final Collection<Object[]> browserList;
         if (!System.getenv().containsKey(DRIVER_ENV_VAR)) {
             browserList = Collections.emptyList();
         } else if (SAUCE_DRIVER.equals(System.getenv().get(DRIVER_ENV_VAR))) {
             browserList = SAUCE_BROWSER_LIST;
             logger.info("Selenium test running on SauceLabs with these browsers:\n{}",
-                        browserNameList(SAUCE_BROWSER_LIST));
+                browserNameList(SAUCE_BROWSER_LIST));
         } else if (BS_DRIVER.equals(System.getenv().get(DRIVER_ENV_VAR))) {
             browserList = BS_BROWSER_LIST;
             logger.info("Selenium test running on BrowserStack with these browsers:\n{}",
-                        browserNameList(BS_BROWSER_LIST));
+                browserNameList(BS_BROWSER_LIST));
         } else {
             // Parameters are not used for non-sauce tests
             browserList = ImmutableList.of(new Object[] {
-                    (Supplier<DesiredCapabilities>) () -> LOCAL_RUN_CAPABILITIES, "Local JS test run"
+                (Supplier<DesiredCapabilities>) () -> LOCAL_RUN_CAPABILITIES, "Local JS test run"
             });
         }
+        return browserList;
+    }
+
+    @Parameters(name = "Selenium JS test: {1} (queue={2}, quirks-mode={3})")
+    public static Iterable<Object[]> sauceLabBrowsersToTest() {
         // For each browser, we need to run in and out of quirks mode.
-        return browserList.stream()
+        return getBrowserList().stream()
                 .flatMap((browser) ->
-                        ImmutableList.of(new Object[] { browser[0], browser[1], false },
-                                         new Object[] { browser[0], browser[1], true  }).stream())
+                        ImmutableList.of(new Object[] { browser[0], browser[1], false, false },
+                                         new Object[] { browser[0], browser[1], false, true },
+                                         new Object[] { browser[0], browser[1], true, false  },
+                                         new Object[] { browser[0], browser[1], true, true  }).stream())
                 .collect(Collectors.toList());
     }
 
@@ -210,7 +218,10 @@ public abstract class SeleniumTestBase {
             PAGE_VIEW_DEFERRED_LOAD("test-page-view-deferred-load"),
             CUSTOM_JAVASCRIPT_NAME("test-custom-javascript-name"),
             CUSTOM_PAGE_VIEW("test-custom-page-view"),
-            EVENT_COMMIT("test-event-commit");
+            EVENT_COMMIT("test-event-commit"),
+            QUEUE_BEFORE_ASYNC("test-queue-before-async"),
+            QUEUE_ADDED_TWICE("test-queue-added-twice"),
+            QUEUE_AFTER_SYNC("test-queue-after-sync");
 
             private final String resourceName;
 
@@ -221,9 +232,10 @@ public abstract class SeleniumTestBase {
 
     private String urlOf(final TestPages page) {
         Preconditions.checkState(null != server);
+        final String queueString = queue ? "queue" : "no_queue";
         final String modeString = quirksMode ? "quirks" : "strict";
-        return String.format("http://%s:%d/%s/%s.html",
-                             server.host, server.port, modeString, page.resourceName);
+        return String.format("http://%s:%d/%s/%s/%s.html",
+                             server.host, server.port, queueString, modeString, page.resourceName);
     }
 
     protected String gotoPage(final TestPages page) {
@@ -248,7 +260,7 @@ public abstract class SeleniumTestBase {
         doSetUp(Optional.empty());
     }
 
-    private void waitDivolteLoaded() {
+    protected void waitDivolteLoaded() {
         Preconditions.checkState(null != driver);
         final WebDriverWait wait = new WebDriverWait(driver, 30);
         wait.until(DIVOLTE_LOADED);

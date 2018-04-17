@@ -336,6 +336,20 @@ This allows for click-through events to be signalled using something like:
   Instrumenting click-through links is more complex than this example implies. A production example would detect
   whether the user is opening a link in a new tab or window and react accordingly.
 
+Loading Divolte asynchronously
+------------------------------
+Please note that if you are loading Divolte asynchronously (with defer async parameters added to the script tag), divolte Javascript object might not be immediately available. In case you need to send a custom signal as soon as possible after page has been loaded, it is possible to write signals to a temporary queue.
+
+.. code-block:: html
+
+  <script>window.divolte = window.divolte||{'loaded':false,'queue':[],'signal':function(){this.queue.push(arguments)}};</script>
+  <script src="//localhost:8290/divolte.js" defer async></script>
+  <script>divolte.signal("customEvent", {"greeting": "hello"});</script>
+
+.. note::
+
+  Signals written to the temporary queue are sent immediately after Divolte has finished loading.
+
 Writing to HDFS
 ===============
 So far, we've been writing our data to the local filesystem in :file:`/tmp`. Although this works it not the intended use of Divolte Collector. The aim is to write the clickstream data to HDFS, such that it is safely and redundantly stored and available for processing using any tool available that knows how to process Avro files (e.g. Apache Hive or Apache Spark). It is trivial to configure Divolte Collector to write to HDFS, assuming you have a working HDFS instance setup. (Setting this up is out of the scope of this getting started guide. There are many great resources to be found on the internet about getting started with and running Hadoop and HDFS.)

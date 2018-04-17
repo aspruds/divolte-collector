@@ -141,7 +141,10 @@ public class SeleniumJavaScriptTest extends SeleniumTestBase {
                 () -> gotoPage(BASIC),
                 driver.navigate()::back,
                 driver.navigate()::back,
-                () -> driver.findElement(By.id("custom")).click(),
+                () -> {
+                    waitDivolteLoaded();
+                    driver.findElement(By.id("custom")).click();
+                },
                 driver.navigate()::forward,
                 driver.navigate()::refresh,
                 driver.navigate()::back,
