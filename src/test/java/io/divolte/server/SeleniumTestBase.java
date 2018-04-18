@@ -260,7 +260,7 @@ public abstract class SeleniumTestBase {
         doSetUp(Optional.empty());
     }
 
-    protected void waitDivolteLoaded() {
+    private void waitDivolteLoaded() {
         Preconditions.checkState(null != driver);
         final WebDriverWait wait = new WebDriverWait(driver, 30);
         wait.until(DIVOLTE_LOADED);
